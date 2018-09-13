@@ -1,3 +1,8 @@
+## Installation
+```python3
+git clone https://github.com/voqtuyen/pose-and-detection-associatation.git
+```
+
 ## Directory structure
 ```bash
 .
