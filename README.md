@@ -15,5 +15,4 @@ python3 pose_association.py --anno_dir annotations --keypoint_dir keypoints
 ```
 
 ## Release history
-- 0.1
-Initial version
+- 0.1: Initial version
