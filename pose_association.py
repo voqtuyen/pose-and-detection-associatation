@@ -20,6 +20,7 @@ plot_bboxes = agrs.plot_bboxes
 
 _LIST_BNDB_DETECTIONS = []
 _LIST_BNDB_KEYPOINTS = []
+_NUMBER_OF_KPTS_VALUE = 36
 
 
 def _visualize_bndboxes_overlap(ktps_bboxes, det_bboxes, plot_title='bboxes overlap visualization'):
@@ -70,13 +71,16 @@ def _get_pose_from_one_xml(dir, filename):
     tree = ET.parse(os.path.join(dir, filename))
     root = tree.getroot()
     list_poses = []
+    list_kpts = []
 
     for elem in root:
         if elem.tag == 'object':
             for subelem in elem:
                 if subelem.tag == 'pose':
                     list_poses.append(subelem.text)
-    return list_poses
+                elif subelem.tag == 'keypoints':
+                    list_kpts.append(subelem.text)
+    return (list_poses, list_kpts)
 
 def _intersection(pose_list, det_list):
     """
@@ -110,7 +114,7 @@ def prettify(elem):
     root = etree.fromstring(rough_string)
     return etree.tostring(root, pretty_print=True, encoding='utf-8').replace(" ".encode(), "\t".encode())
 
-def _associate_poses_to_dets(dir, filename, poses):
+def _associate_poses_to_dets(dir, filename, poses, kpts):
     """
     Run association between dets and poses
     Arguments:
@@ -122,18 +126,24 @@ def _associate_poses_to_dets(dir, filename, poses):
     """
     tree = ET.parse(os.path.join(dir, filename))
     root = tree.getroot()
-    indx = 0
-    for elem in root:
-        if elem.tag == 'object':
-            has_pose_tag = False
-            for subelem in elem:
-                if subelem.tag == 'pose':
-                    has_pose_tag = True 
-                    subelem.text = poses[indx]     
-            if not has_pose_tag:
-                pose_elem = ET.SubElement(elem, 'pose')
-                pose_elem.text = poses[indx]
-            indx += 1
+
+    def handle_adding_xml_elem(elem_name, value_list):
+        idx = 0
+        for elem in root:
+            if elem.tag == 'object':
+                has_pose_tag = False
+                for subelem in elem:
+                    if subelem.tag == elem_name:
+                        has_pose_tag = True 
+                        subelem.text = value_list[idx]     
+                if not has_pose_tag:
+                    pose_elem = ET.SubElement(elem, elem_name)
+                    pose_elem.text = value_list[idx]
+                idx += 1
+
+    handle_adding_xml_elem('pose', poses)
+    handle_adding_xml_elem('keypoints', kpts)
+
     out_file = codecs.open(os.path.join(dir, filename), 'w', encoding='utf-8')
     out_file.write(prettify(root).decode('utf-8'))
     out_file.close()        
@@ -152,16 +162,20 @@ if __name__ == '__main__':
         _LIST_BNDB_DETECTIONS = _get_bndbox_coordinates_from_one_xml(anno_dir, anno_file)
         _LIST_BNDB_KEYPOINTS = _get_bndbox_coordinates_from_one_xml(kpts_dir, anno_file)
         inters = _intersection(_LIST_BNDB_DETECTIONS, _LIST_BNDB_KEYPOINTS)
-        poses = _get_pose_from_one_xml(kpts_dir, anno_file)
+        poses, kpts = _get_pose_from_one_xml(kpts_dir, anno_file)
+
         if len(_LIST_BNDB_DETECTIONS) <= len(_LIST_BNDB_KEYPOINTS):
             inters_idx = np.argmax(inters, axis=1)
             poses = np.take(poses, inters_idx)
-            _associate_poses_to_dets(anno_dir, anno_file, poses)
+            kpts = np.take(kpts, inters_idx)
+            _associate_poses_to_dets(anno_dir, anno_file, poses, kpts)
         else:
             inters_idx = np.argmax(inters,axis=0)
             poses_tmp = np.array(["Unspecified"] * len(_LIST_BNDB_DETECTIONS))
+            kpts_tmp = np.array(np.zeros(_NUMBER_OF_KPTS_VALUE) * len(_LIST_BNDB_DETECTIONS))
             for idx, idx_value in enumerate(inters_idx):
                 poses_tmp[idx_value] = poses[idx]
-            _associate_poses_to_dets(anno_dir, anno_file, poses_tmp)
+                kpts_tmp[idx_value] = kpts[idx]
+            _associate_poses_to_dets(anno_dir, anno_file, poses_tmp, kpts)
         if plot_bboxes:
             _visualize_bndboxes_overlap(_LIST_BNDB_KEYPOINTS, _LIST_BNDB_DETECTIONS, anno_file)
