@@ -23,3 +23,4 @@ python3 pose_association.py --anno_dir annotations --keypoint_dir keypoints
 
 ## Release history
 - 0.1 Initial version (Sep 13, 2018)
+- 0.5 Add keypoints association and handle different lengths of det and kpts( Sep 17, 2018)
