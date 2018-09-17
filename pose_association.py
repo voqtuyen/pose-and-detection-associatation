@@ -151,15 +151,17 @@ if __name__ == '__main__':
         # Get lists of bounding boxes from pose xml and detection xml
         _LIST_BNDB_DETECTIONS = _get_bndbox_coordinates_from_one_xml(anno_dir, anno_file)
         _LIST_BNDB_KEYPOINTS = _get_bndbox_coordinates_from_one_xml(kpts_dir, anno_file)
-        if len(_LIST_BNDB_DETECTIONS) == len(_LIST_BNDB_KEYPOINTS):
-
-            inters = _intersection(_LIST_BNDB_DETECTIONS, _LIST_BNDB_KEYPOINTS)
+        inters = _intersection(_LIST_BNDB_DETECTIONS, _LIST_BNDB_KEYPOINTS)
+        poses = _get_pose_from_one_xml(kpts_dir, anno_file)
+        if len(_LIST_BNDB_DETECTIONS) <= len(_LIST_BNDB_KEYPOINTS):
             inters_idx = np.argmax(inters, axis=1)
-            poses = _get_pose_from_one_xml(kpts_dir, anno_file)
             poses = np.take(poses, inters_idx)
             _associate_poses_to_dets(anno_dir, anno_file, poses)
-            
         else:
-            print("Skip file " + str(anno_file) + " due to mismatch of #detected det to #poses")
+            inters_idx = np.argmax(inters,axis=0)
+            poses_tmp = np.array(["Unspecified"] * len(_LIST_BNDB_DETECTIONS))
+            for idx, idx_value in enumerate(inters_idx):
+                poses_tmp[idx_value] = poses[idx]
+            _associate_poses_to_dets(anno_dir, anno_file, poses_tmp)
         if plot_bboxes:
             _visualize_bndboxes_overlap(_LIST_BNDB_KEYPOINTS, _LIST_BNDB_DETECTIONS, anno_file)
