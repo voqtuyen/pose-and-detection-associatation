@@ -11,19 +11,26 @@ import cv2
 parser = argparse.ArgumentParser()
 parser.add_argument('--anno_dir', default='./annotations', help="Path to the annotation directory")
 parser.add_argument('--keypoint_dir', default='./keypoints', help="Path to keypoints xml directory")
+parser.add_argument('--plot_bboxes', default=False, help="Visualize the bounding boxes")
 agrs = parser.parse_args()
 
 anno_dir = agrs.anno_dir
 kpts_dir = agrs.keypoint_dir
+plot_bboxes = agrs.plot_bboxes
 
 _LIST_BNDB_DETECTIONS = []
 _LIST_BNDB_KEYPOINTS = []
 
 
-def _visualize_bndboxes_overlap(ktps_bbox, det_bbox, plot_title='bboxes overlap visualization'):
-    img = np.zeros((800,800,3), np.uint8)
-    cv2.rectangle(img, (ktps_bbox[0], ktps_bbox[1]), (ktps_bbox[2], ktps_bbox[3]), (255,0,0),3)
-    cv2.rectangle(img, (det_bbox[0], det_bbox[1]), (det_bbox[2], det_bbox[3]), (0,255,0),3)
+def _visualize_bndboxes_overlap(ktps_bboxes, det_bboxes, plot_title='bboxes overlap visualization'):
+    img = np.ones((800,800,3), np.uint8) *255
+    cv2.putText(img,plot_title,(10, 760), cv2.FONT_HERSHEY_SIMPLEX,1.0,(0,0,0))
+    for i in range(len(ktps_bboxes)):
+        cv2.rectangle(img, (ktps_bboxes[i][0], ktps_bboxes[i][1]), (ktps_bboxes[i][2], ktps_bboxes[i][3]), (20*i,255-10*i,255-10*i),1)
+        cv2.putText(img, 'k' + str(i),(ktps_bboxes[i][0], ktps_bboxes[i][1]), cv2.FONT_HERSHEY_SIMPLEX,0.4,(0,0,0))
+    for j in range(len(det_bboxes)):
+        cv2.rectangle(img, (det_bboxes[j][0], det_bboxes[j][1]), (det_bboxes[j][2], det_bboxes[j][3]), (20*j,10*j,255-10*j),1)
+        cv2.putText(img,'d' + str(j),(det_bboxes[j][2], det_bboxes[j][3]), cv2.FONT_HERSHEY_SIMPLEX,0.4,(0,0,0))
     cv2.imshow(plot_title,img)
     cv2.waitKey(0)
 
@@ -147,9 +154,12 @@ if __name__ == '__main__':
         if len(_LIST_BNDB_DETECTIONS) == len(_LIST_BNDB_KEYPOINTS):
 
             inters = _intersection(_LIST_BNDB_DETECTIONS, _LIST_BNDB_KEYPOINTS)
-            inters_idx = np.argmax(inters, axis=0)
+            inters_idx = np.argmax(inters, axis=1)
             poses = _get_pose_from_one_xml(kpts_dir, anno_file)
             poses = np.take(poses, inters_idx)
             _associate_poses_to_dets(anno_dir, anno_file, poses)
+            
         else:
             print("Skip file " + str(anno_file) + " due to mismatch of #detected det to #poses")
+        if plot_bboxes:
+            _visualize_bndboxes_overlap(_LIST_BNDB_KEYPOINTS, _LIST_BNDB_DETECTIONS, anno_file)
