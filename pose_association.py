@@ -106,6 +106,21 @@ def _intersection(pose_list, det_list):
 
     return intersect_heights * intersect_widths
 
+def _area(bbox_list):
+    """
+    Calculate the areas of bbox_list
+        Before squeezing (shape=(2,1)):
+            [[ 9][16]]
+        After squeezing (shape=(2,)): 
+            [ 9 16]
+    Arguments: 
+        bbox_list: list of boxes with top-left corner coordinates and bottom-up corner coordinates
+    Return:
+        list of the same size containing the areas of the bbox list
+    """
+    y_min, x_min, y_max, x_max = np.split(np.array(bbox_list), indices_or_sections=4, axis=1)
+    return (y_max - y_min) * (x_max - x_min)
+
 def prettify(elem):
     """
     Return a pretty-printed XML string for the Element.
@@ -162,6 +177,9 @@ if __name__ == '__main__':
         _LIST_BNDB_DETECTIONS = _get_bndbox_coordinates_from_one_xml(anno_dir, anno_file)
         _LIST_BNDB_KEYPOINTS = _get_bndbox_coordinates_from_one_xml(kpts_dir, anno_file)
         inters = _intersection(_LIST_BNDB_DETECTIONS, _LIST_BNDB_KEYPOINTS)
+        areas = np.tile(_area(_LIST_BNDB_DETECTIONS), (1, len(_LIST_BNDB_KEYPOINTS)))
+        inters = np.divide(inters, areas)
+        
         poses, kpts = _get_pose_from_one_xml(kpts_dir, anno_file)
 
         if len(_LIST_BNDB_DETECTIONS) <= len(_LIST_BNDB_KEYPOINTS):
